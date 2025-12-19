@@ -1,221 +1,88 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>YDRX | Admin</title>
+  <meta charset="UTF-8" />
+  <title>Admin – Recargas</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
-    body{font-family:system-ui; background:#050608; color:#e8fff1; margin:0; padding:16px;}
-    .box{max-width:1100px; margin:0 auto; border:1px solid #29ff6a55; border-radius:14px; padding:14px; background:#00000066}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
-    button{cursor:pointer; padding:10px 12px; border-radius:12px; border:1px solid #29ff6a85; background:#29ff6a22; color:#e8fff1}
-    input, textarea{padding:10px 12px; border-radius:12px; border:1px solid #29ff6a55; background:#00000066; color:#e8fff1}
-    textarea{width:100%; min-height:110px}
-    .grid{display:grid; gap:10px}
-    .card{border:1px solid #29ff6a55; border-radius:14px; padding:12px; background:#00000055}
-    .muted{opacity:.75}
-    .tag{display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid #29ff6a55; font-size:12px}
-    hr{border-color:#29ff6a22}
+    body{font-family:Arial;background:#0b0b0b;color:#fff;padding:20px}
+    table{width:100%;border-collapse:collapse;margin-top:20px}
+    th,td{border:1px solid #333;padding:8px;text-align:center}
+    th{background:#111}
+    button{padding:6px 10px;cursor:pointer}
+    .ok{background:#16a34a;color:#fff;border:0}
+    .no{background:#dc2626;color:#fff;border:0}
   </style>
 </head>
 <body>
 
-  <div class="box">
-    <div class="row">
-      <div>
-        <b>Panel Admin</b> <span class="tag">YDRX</span>
-        <div class="muted" id="me"></div>
-      </div>
-      <div class="row">
-        <button id="dashBtn">Ir a Dashboard</button>
-        <button id="logoutBtn">Salir</button>
-      </div>
-    </div>
+<h2>Panel Admin – Recargas</h2>
 
-    <hr>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Usuario</th>
+      <th>Monto</th>
+      <th>Estado</th>
+      <th>Acción</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
 
-    <div class="grid">
-      <div class="card">
-        <b>1) Crear producto</b>
-        <div class="row" style="margin-top:10px">
-          <input id="pName" placeholder="Nombre producto" />
-          <input id="pPerfil" type="number" placeholder="Precio Perfil" />
-          <input id="pCompleta" type="number" placeholder="Precio Completa" />
-          <button id="addProductBtn">Crear</button>
-        </div>
-      </div>
+<script>
+/* ====== CONFIGURA ESTO ====== */
+const SUPABASE_URL = "TU_SUPABASE_URL";
+const SUPABASE_SERVICE_KEY = "TU_SERVICE_ROLE_KEY"; // SOLO ADMIN
+/* ============================ */
 
-      <div class="card">
-        <b>2) Productos / Precios / Stock</b>
-        <div id="products" class="grid" style="margin-top:10px"></div>
-      </div>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-      <div class="card">
-        <b>3) Recargas (pendientes)</b>
-        <div id="topups" class="grid" style="margin-top:10px"></div>
-      </div>
+async function cargar() {
+  const { data } = await sb
+    .from("recargas")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-      <div class="card">
-        <b>Tip</b>
-        <div class="muted">Para entrar como admin: email <b>admin@ydrx.local</b> y pass <b>admin123</b></div>
-      </div>
-    </div>
-  </div>
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = "";
 
-  <script src="app.js"></script>
-  <script>
-    const u = YDRX.requireLogin();
-    if (u.role !== "admin") { alert("No eres admin"); window.location.href="dashboard.html"; }
+  data.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${r.usuario}</td>
+      <td>${r.monto}</td>
+      <td>${r.estado}</td>
+      <td>
+        ${r.estado === "pendiente"
+          ? `<button class="ok" onclick="aprobar(${r.id},'${r.usuario}',${r.monto})">Aprobar</button>`
+          : "—"}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
-    document.getElementById("me").textContent = u.user + " (" + u.email + ")";
+async function aprobar(id, usuario, monto) {
+  // sumar saldo
+  await sb.rpc("sumar_saldo_admin", {
+    p_user: usuario,
+    p_monto: monto
+  });
 
-    function money(n){ return "$" + Number(n||0).toFixed(2); }
+  // marcar recarga entregada
+  await sb
+    .from("recargas")
+    .update({ estado: "entregado" })
+    .eq("id", id);
 
-    function renderProducts(){
-      const wrap = document.getElementById("products");
-      wrap.innerHTML = "";
-      const db = YDRX.loadDB();
+  cargar();
+}
 
-      db.products.forEach(p => {
-        const perfilStock = p.variants.perfil.stock.length;
-        const completaStock = p.variants.completa.stock.length;
+cargar();
+</script>
 
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="row">
-            <div>
-              <b>${p.name}</b>
-              <div class="muted">ID: ${p.id}</div>
-            </div>
-            <div class="row">
-              <label class="muted">Activo</label>
-              <input type="checkbox" data-active="${p.id}" ${p.active ? "checked":""}/>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <div>
-              <b>Perfil</b>
-              <span class="muted">Precio:</span>
-              <input style="width:120px" type="number" value="${p.variants.perfil.price}" data-price="${p.id}|perfil">
-              <span class="muted">Stock:</span> <b>${perfilStock}</b>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <div>
-              <b>Completa</b>
-              <span class="muted">Precio:</span>
-              <input style="width:120px" type="number" value="${p.variants.completa.price}" data-price="${p.id}|completa">
-              <span class="muted">Stock:</span> <b>${completaStock}</b>
-            </div>
-          </div>
-
-          <div style="margin-top:12px">
-            <div class="muted">Pega stock (1 por línea) y elige variante:</div>
-            <div class="row" style="margin-top:8px">
-              <button data-addstock="${p.id}|perfil">Agregar stock Perfil</button>
-              <button data-addstock="${p.id}|completa">Agregar stock Completa</button>
-            </div>
-            <textarea id="stock_${p.id}" placeholder="ejemplo:
-cuenta1:pass1
-cuenta2:pass2
-codigo-123
-..."></textarea>
-          </div>
-        `;
-        wrap.appendChild(div);
-      });
-
-      // activo
-      wrap.querySelectorAll("input[data-active]").forEach(ch => {
-        ch.addEventListener("change", () => {
-          const pId = ch.getAttribute("data-active");
-          YDRX.updateProduct(pId, { active: ch.checked });
-          renderProducts();
-        });
-      });
-
-      // precios
-      wrap.querySelectorAll("input[data-price]").forEach(inp => {
-        inp.addEventListener("change", () => {
-          const [pId, v] = inp.getAttribute("data-price").split("|");
-          if (v === "perfil") YDRX.updateProduct(pId, { perfilPrice: inp.value });
-          if (v === "completa") YDRX.updateProduct(pId, { completaPrice: inp.value });
-          renderProducts();
-        });
-      });
-
-      // stock
-      wrap.querySelectorAll("button[data-addstock]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const [pId, v] = btn.getAttribute("data-addstock").split("|");
-          const ta = document.getElementById("stock_" + pId);
-          const lines = (ta.value || "").split("\n").map(x => x.trim()).filter(Boolean);
-          try{
-            const n = YDRX.addStock(pId, v, lines);
-            alert("Agregado: " + n);
-            ta.value = "";
-            renderProducts();
-          }catch(err){
-            alert(err.message);
-          }
-        });
-      });
-    }
-
-    function renderTopups(){
-      const wrap = document.getElementById("topups");
-      wrap.innerHTML = "";
-      const all = YDRX.listTopups().filter(t => t.status === "pending");
-      if (!all.length){
-        wrap.innerHTML = `<div class="muted">No hay recargas pendientes.</div>`;
-        return;
-      }
-
-      const db = YDRX.loadDB();
-      all.forEach(t => {
-        const user = db.users.find(u => u.id === t.userId);
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div><b>${user ? user.user : t.userId}</b> <span class="muted">(${user ? user.email : ""})</span></div>
-          <div class="muted">Monto: <b>${money(t.amount)}</b> | Ref: ${t.ref || "-"}</div>
-          <div class="muted">${new Date(t.when).toLocaleString()}</div>
-          <div class="row" style="margin-top:10px">
-            <button data-ap="${t.id}">Aprobar</button>
-            <button data-rj="${t.id}">Rechazar</button>
-          </div>
-        `;
-        wrap.appendChild(div);
-      });
-
-      wrap.querySelectorAll("button[data-ap]").forEach(b=>{
-        b.onclick = () => { YDRX.approveTopup(b.getAttribute("data-ap")); renderTopups(); };
-      });
-      wrap.querySelectorAll("button[data-rj]").forEach(b=>{
-        b.onclick = () => { YDRX.rejectTopup(b.getAttribute("data-rj")); renderTopups(); };
-      });
-    }
-
-    document.getElementById("addProductBtn").onclick = () => {
-      YDRX.addProduct({
-        name: document.getElementById("pName").value,
-        perfilPrice: document.getElementById("pPerfil").value,
-        completaPrice: document.getElementById("pCompleta").value
-      });
-      document.getElementById("pName").value = "";
-      document.getElementById("pPerfil").value = "";
-      document.getElementById("pCompleta").value = "";
-      renderProducts();
-    };
-
-    document.getElementById("dashBtn").onclick = () => window.location.href = "dashboard.html";
-    document.getElementById("logoutBtn").onclick = () => YDRX.logout();
-
-    renderProducts();
-    renderTopups();
-  </script>
 </body>
 </html>
