@@ -1,8 +1,8 @@
-/* YDRX - app.js (modo pruebas con localStorage + Supabase si existe) */
+/* YDRX - app.js (localStorage + Supabase si existe) */
 
 const DB_KEY = "ydrx_db_v1";
 
-/* ----------------- DB local (igual que tu código) ----------------- */
+/* ----------------- DB local ----------------- */
 function loadDB() {
   const raw = localStorage.getItem(DB_KEY);
   if (raw) return JSON.parse(raw);
@@ -13,7 +13,6 @@ function loadDB() {
       { id: "u_admin", email: "admin@ydrx.local", pass: "admin123", user: "@admin", role: "admin", balance: 0 }
     ],
     products: [
-      // productos demo (los puedes borrar luego)
       { id: "p1", name: "Producto 1", active: true, variants: {
         perfil:  { price: 50, stock: [] },
         completa:{ price: 90, stock: [] }
@@ -22,8 +21,6 @@ function loadDB() {
     orders: [],
     topups: [],
     session: { userId: null },
-
-    // cache simple de supabase user (para no romper tus funciones sync)
     sbUser: null
   };
 
@@ -46,48 +43,93 @@ function normalizeUser(v) {
   return "@" + v;
 }
 
-/* ----------------- Supabase helpers (NUEVO) ----------------- */
+/* ----------------- Supabase helpers ----------------- */
 function hasSupabase() {
   return !!(window.supabaseClient && window.supabaseClient.auth);
 }
 
 function cacheSupabaseUser(user) {
   const db = loadDB();
-  db.sbUser = user ? { id: user.id, email: user.email } : null;
-  db.session.userId = user ? user.id : null; // para que tu app siga leyendo session.userId
+  db.sbUser = user ? { id: user.id, email: user.email, meta: user.user_metadata || {} } : null;
+  db.session.userId = user ? user.id : null; // para que todo lo demás use el mismo userId
   saveDB(db);
 }
 
-function initSupabaseAuthSync() {
-  if (!hasSupabase()) return;
+// Crea/obtiene el usuario LOCAL ligado al usuario de Supabase (para saldo/pedidos/etc)
+function ensureLocalUserForSupabase(sbUser) {
+  const db = loadDB();
+  if (!sbUser) return null;
 
-  // 1) Cargar user actual si ya había sesión
-  window.supabaseClient.auth.getUser().then(({ data }) => {
-    cacheSupabaseUser(data?.user || null);
-  }).catch(() => {});
+  // si es admin local, no lo toques
+  if (db.session.userId === "u_admin") {
+    return db.users.find(u => u.id === "u_admin") || null;
+  }
 
-  // 2) Escuchar cambios de sesión
-  window.supabaseClient.auth.onAuthStateChange((_event, session) => {
-    cacheSupabaseUser(session?.user || null);
-  });
+  let u = db.users.find(x => x.id === sbUser.id);
+  if (!u) {
+    const handle = normalizeUser(sbUser.user_metadata?.handle || ("user_" + sbUser.id.slice(0,6)));
+    u = { id: sbUser.id, email: (sbUser.email || "").toLowerCase(), pass: null, user: handle, role: "user", balance: 0 };
+    db.users.push(u);
+    saveDB(db);
+  } else {
+    // refrescar email/handle si cambian (sin pisar balance)
+    const newEmail = (sbUser.email || "").toLowerCase();
+    if (newEmail && u.email !== newEmail) u.email = newEmail;
+
+    const metaHandle = sbUser.user_metadata?.handle;
+    if (metaHandle) u.user = normalizeUser(metaHandle);
+
+    saveDB(db);
+  }
+  return u;
 }
 
-// Se ejecuta al cargar app.js
-initSupabaseAuthSync();
+// Intenta sincronizar auth aunque supabaseClient cargue después
+function initSupabaseAuthSync() {
+  if (!hasSupabase()) return false;
+
+  window.supabaseClient.auth.getUser()
+    .then(({ data }) => {
+      const user = data?.user || null;
+      cacheSupabaseUser(user);
+      if (user) ensureLocalUserForSupabase(user);
+    })
+    .catch(() => {});
+
+  window.supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const user = session?.user || null;
+    cacheSupabaseUser(user);
+    if (user) ensureLocalUserForSupabase(user);
+  });
+
+  return true;
+}
+
+// Arranque: si aún no existe supabaseClient, reintenta un poco
+(function bootSupabaseSync() {
+  if (initSupabaseAuthSync()) return;
+  let tries = 0;
+  const t = setInterval(() => {
+    tries++;
+    if (initSupabaseAuthSync() || tries > 30) clearInterval(t); // ~3s
+  }, 100);
+})();
 
 /* ----------------- Sesión ----------------- */
 function currentUser() {
   const db = loadDB();
 
-  // Si hay supabase, regresamos el usuario cacheado (y si es admin local no lo rompemos)
-  if (hasSupabase()) {
-    if (db.session.userId === "u_admin") {
-      return db.users.find(u => u.id === "u_admin") || null;
-    }
-    return db.sbUser ? { id: db.sbUser.id, email: db.sbUser.email, role: "user", balance: 0 } : null;
+  // admin local
+  if (db.session.userId === "u_admin") {
+    return db.users.find(u => u.id === "u_admin") || null;
   }
 
-  // Modo local
+  // si hay supabase y hay user cacheado: usa el usuario local ligado (para balance/pedidos)
+  if (hasSupabase() && db.sbUser) {
+    return ensureLocalUserForSupabase({ id: db.sbUser.id, email: db.sbUser.email, user_metadata: db.sbUser.meta }) || null;
+  }
+
+  // modo local
   return db.users.find(u => u.id === db.session.userId) || null;
 }
 
@@ -120,27 +162,26 @@ async function registerUser({ email, pass, user }) {
   if (!pass || pass.length < 6) throw new Error("Contraseña mínimo 6");
   if (user.length < 4) throw new Error("@user muy corto");
 
-  // ✅ SI HAY SUPABASE: registrar en Supabase Auth
+  // ✅ Supabase
   if (hasSupabase()) {
     const { data, error } = await window.supabaseClient.auth.signUp({
       email,
       password: pass,
-      options: {
-        // guardamos tu @user como metadata (sirve aunque no tengas tabla profiles todavía)
-        data: { handle: user }
-      }
+      options: { data: { handle: user } }
     });
 
     if (error) throw new Error(error.message);
 
-    // Si confirma email ON, data.user existe pero session puede ser null (depende config)
-    // Cacheamos si viene user
-    if (data?.user) cacheSupabaseUser(data.user);
+    // si viene user, ligarlo a local
+    if (data?.user) {
+      cacheSupabaseUser(data.user);
+      ensureLocalUserForSupabase(data.user);
+    }
 
     return data;
   }
 
-  // ✅ MODO LOCAL (tu código original)
+  // ✅ Local
   const db = loadDB();
   if (db.users.some(u => u.email === email)) throw new Error("Ese correo ya existe");
   if (db.users.some(u => u.user === user)) throw new Error("Ese @user ya existe");
@@ -155,7 +196,7 @@ async function registerUser({ email, pass, user }) {
 async function loginUser({ email, pass }) {
   email = (email || "").trim().toLowerCase();
 
-  // ✅ SI HAY SUPABASE: login real
+  // ✅ Supabase
   if (hasSupabase()) {
     const { data, error } = await window.supabaseClient.auth.signInWithPassword({
       email,
@@ -164,11 +205,14 @@ async function loginUser({ email, pass }) {
 
     if (error) throw new Error(error.message);
 
-    if (data?.user) cacheSupabaseUser(data.user);
+    if (data?.user) {
+      cacheSupabaseUser(data.user);
+      ensureLocalUserForSupabase(data.user);
+    }
     return data;
   }
 
-  // ✅ MODO LOCAL (tu código original)
+  // ✅ Local
   const db = loadDB();
   const u = db.users.find(x => x.email === email && x.pass === pass);
   if (!u) throw new Error("Correo o contraseña incorrectos");
@@ -177,7 +221,7 @@ async function loginUser({ email, pass }) {
   return u;
 }
 
-/* ----------------- Productos / Stock (SIN CAMBIOS) ----------------- */
+/* ----------------- Productos / Stock ----------------- */
 function listProducts() {
   const db = loadDB();
   return db.products.filter(p => p.active);
@@ -229,7 +273,7 @@ function addStock(pId, variant, stockItems) {
   return items.length;
 }
 
-/* ----------------- Compra (SIN CAMBIOS) ----------------- */
+/* ----------------- Compra ----------------- */
 function buyProduct({ pId, variant }) {
   const db = loadDB();
   const u = db.users.find(x => x.id === db.session.userId);
@@ -269,7 +313,7 @@ function myOrders() {
   return db.orders.filter(o => o.userId === u.id).sort((a,b)=> b.when.localeCompare(a.when));
 }
 
-/* ----------------- Recargas (SIN CAMBIOS) ----------------- */
+/* ----------------- Recargas ----------------- */
 function requestTopup({ amount, ref }) {
   const db = loadDB();
   const u = db.users.find(x => x.id === db.session.userId);
@@ -324,13 +368,13 @@ function rejectTopup(tId) {
   return t;
 }
 
-/* ----------------- Reset (SIN CAMBIOS) ----------------- */
+/* ----------------- Reset ----------------- */
 function resetAll() {
   localStorage.removeItem(DB_KEY);
   loadDB();
 }
 
-/* Exponer en window para usar en las páginas */
+/* Exponer en window */
 window.YDRX = {
   loadDB, saveDB, resetAll,
   currentUser, requireLogin, logout,
