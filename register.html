@@ -113,6 +113,7 @@
     }
     .btn:hover{transform:translateY(-1px); box-shadow: 0 0 14px rgba(41,255,106,.35), 0 0 34px rgba(41,255,106,.18); background: rgba(41,255,106,.22);}
     .btn:active{transform:translateY(0px) scale(.99);}
+    .btn:disabled{opacity:.45; cursor:not-allowed;}
 
     .tiny{
       position:relative;
@@ -136,6 +137,7 @@
     .status.good{border-color: rgba(41,255,106,.55); color: rgba(200,255,220,.95);}
   </style>
 </head>
+
 <body>
   <canvas id="space"></canvas>
 
@@ -176,7 +178,7 @@
           <a class="link" href="login.html">Ya tengo cuenta</a>
         </div>
 
-        <button class="btn" type="submit">Crear cuenta</button>
+        <button class="btn" id="submitBtn" type="submit">Crear cuenta</button>
 
         <div class="tiny">
           Al registrarte aceptas los términos (luego los agregamos).
@@ -185,8 +187,9 @@
     </section>
   </div>
 
-  <!-- Cargar primero el "cerebro" -->
-  <script src="app.js"></script>
+  <!-- ✅ Supabase primero -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
 
   <script>
     // Fondo: estrellas + meteoros
@@ -224,17 +227,11 @@
       const vx = fromRight ? -(Math.random()*6 + 10) : (Math.random()*6 + 10);
       const vy = (Math.random()*4 + 6);
 
-      meteors.push({
-        x, y, vx, vy,
-        life: 0,
-        maxLife: Math.random()*40 + 40,
-        len: Math.random()*180 + 120
-      });
+      meteors.push({ x, y, vx, vy, life: 0, maxLife: Math.random()*40 + 40, len: Math.random()*180 + 120 });
     }
 
     let meteorTimer = 0;
     let last = performance.now();
-
     function draw(now){
       const dt = now - last;
       last = now;
@@ -291,12 +288,13 @@
 
       requestAnimationFrame(draw);
     }
-
     resize();
     requestAnimationFrame(draw);
 
-    // Registro real
+    // ---- Registro con Supabase ----
     const statusEl = document.getElementById("status");
+    const submitBtn = document.getElementById("submitBtn");
+
     function setStatus(msg, kind){
       statusEl.textContent = msg;
       statusEl.className = "status show " + (kind || "");
@@ -318,10 +316,10 @@
       userEl.value = normalizeUser(userEl.value);
     });
 
-    document.getElementById("registerForm").addEventListener("submit", (e) => {
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const email = emailEl.value.trim();
+      const email = emailEl.value.trim().toLowerCase();
       const user  = normalizeUser(userEl.value);
       const p1 = passEl.value;
       const p2 = pass2El.value;
@@ -331,11 +329,33 @@
       if (p1.length < 6) return setStatus("La contraseña debe tener mínimo 6 caracteres.", "bad");
       if (p1 !== p2) return setStatus("Las contraseñas no coinciden.", "bad");
 
+      submitBtn.disabled = true;
+      setStatus("Creando cuenta...", "good");
+
       try{
-        YDRX.registerUser({ email, pass: p1, user });
-        window.location.href = "dashboard.html";
-      }catch(err){
-        setStatus(err.message, "bad");
+        // 1) Crear usuario en Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: p1,
+          options: {
+            data: { user_handle: user } // se guarda en metadata
+          }
+        });
+        if (error) throw error;
+
+        // 2) Si tu proyecto NO pide confirmación por email, habrá sesión y puedes entrar directo.
+        // Si SÍ pide confirmación, no habrá sesión y el usuario debe confirmar correo.
+        if (data.session) {
+          // ✅ (Opcional) Aquí luego insertaremos en "profiles" cuando la tengamos lista.
+          window.location.href = "dashboard.html";
+        } else {
+          setStatus("Cuenta creada ✅ Revisa tu correo para confirmar y luego inicia sesión.", "good");
+          setTimeout(() => window.location.href = "login.html", 1600);
+        }
+
+      } catch (err) {
+        setStatus(err.message || "Error al registrar.", "bad");
+        submitBtn.disabled = false;
       }
     });
   </script>
