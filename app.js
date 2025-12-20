@@ -1,7 +1,8 @@
-/* YDRX - app.js (modo pruebas sin servidor con localStorage) */
+/* YDRX - app.js (modo pruebas con localStorage + Supabase si existe) */
 
 const DB_KEY = "ydrx_db_v1";
 
+/* ----------------- DB local (igual que tu código) ----------------- */
 function loadDB() {
   const raw = localStorage.getItem(DB_KEY);
   if (raw) return JSON.parse(raw);
@@ -19,8 +20,11 @@ function loadDB() {
       }},
     ],
     orders: [],
-    topups: [], // recargas manuales (pendientes/aprobadas)
-    session: { userId: null }
+    topups: [],
+    session: { userId: null },
+
+    // cache simple de supabase user (para no romper tus funciones sync)
+    sbUser: null
   };
 
   saveDB(db);
@@ -42,9 +46,48 @@ function normalizeUser(v) {
   return "@" + v;
 }
 
-/* --------- Sesión --------- */
+/* ----------------- Supabase helpers (NUEVO) ----------------- */
+function hasSupabase() {
+  return !!(window.supabaseClient && window.supabaseClient.auth);
+}
+
+function cacheSupabaseUser(user) {
+  const db = loadDB();
+  db.sbUser = user ? { id: user.id, email: user.email } : null;
+  db.session.userId = user ? user.id : null; // para que tu app siga leyendo session.userId
+  saveDB(db);
+}
+
+function initSupabaseAuthSync() {
+  if (!hasSupabase()) return;
+
+  // 1) Cargar user actual si ya había sesión
+  window.supabaseClient.auth.getUser().then(({ data }) => {
+    cacheSupabaseUser(data?.user || null);
+  }).catch(() => {});
+
+  // 2) Escuchar cambios de sesión
+  window.supabaseClient.auth.onAuthStateChange((_event, session) => {
+    cacheSupabaseUser(session?.user || null);
+  });
+}
+
+// Se ejecuta al cargar app.js
+initSupabaseAuthSync();
+
+/* ----------------- Sesión ----------------- */
 function currentUser() {
   const db = loadDB();
+
+  // Si hay supabase, regresamos el usuario cacheado (y si es admin local no lo rompemos)
+  if (hasSupabase()) {
+    if (db.session.userId === "u_admin") {
+      return db.users.find(u => u.id === "u_admin") || null;
+    }
+    return db.sbUser ? { id: db.sbUser.id, email: db.sbUser.email, role: "user", balance: 0 } : null;
+  }
+
+  // Modo local
   return db.users.find(u => u.id === db.session.userId) || null;
 }
 
@@ -54,16 +97,22 @@ function requireLogin() {
   return u;
 }
 
-function logout() {
+async function logout() {
   const db = loadDB();
-  db.session.userId = null;
-  saveDB(db);
+
+  if (hasSupabase()) {
+    await window.supabaseClient.auth.signOut();
+    cacheSupabaseUser(null);
+  } else {
+    db.session.userId = null;
+    saveDB(db);
+  }
+
   window.location.href = "index.html";
 }
 
-/* --------- Auth --------- */
-function registerUser({ email, pass, user }) {
-  const db = loadDB();
+/* ----------------- Auth ----------------- */
+async function registerUser({ email, pass, user }) {
   email = (email || "").trim().toLowerCase();
   user = normalizeUser(user);
 
@@ -71,6 +120,28 @@ function registerUser({ email, pass, user }) {
   if (!pass || pass.length < 6) throw new Error("Contraseña mínimo 6");
   if (user.length < 4) throw new Error("@user muy corto");
 
+  // ✅ SI HAY SUPABASE: registrar en Supabase Auth
+  if (hasSupabase()) {
+    const { data, error } = await window.supabaseClient.auth.signUp({
+      email,
+      password: pass,
+      options: {
+        // guardamos tu @user como metadata (sirve aunque no tengas tabla profiles todavía)
+        data: { handle: user }
+      }
+    });
+
+    if (error) throw new Error(error.message);
+
+    // Si confirma email ON, data.user existe pero session puede ser null (depende config)
+    // Cacheamos si viene user
+    if (data?.user) cacheSupabaseUser(data.user);
+
+    return data;
+  }
+
+  // ✅ MODO LOCAL (tu código original)
+  const db = loadDB();
   if (db.users.some(u => u.email === email)) throw new Error("Ese correo ya existe");
   if (db.users.some(u => u.user === user)) throw new Error("Ese @user ya existe");
 
@@ -81,9 +152,24 @@ function registerUser({ email, pass, user }) {
   return newUser;
 }
 
-function loginUser({ email, pass }) {
-  const db = loadDB();
+async function loginUser({ email, pass }) {
   email = (email || "").trim().toLowerCase();
+
+  // ✅ SI HAY SUPABASE: login real
+  if (hasSupabase()) {
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+      email,
+      password: pass
+    });
+
+    if (error) throw new Error(error.message);
+
+    if (data?.user) cacheSupabaseUser(data.user);
+    return data;
+  }
+
+  // ✅ MODO LOCAL (tu código original)
+  const db = loadDB();
   const u = db.users.find(x => x.email === email && x.pass === pass);
   if (!u) throw new Error("Correo o contraseña incorrectos");
   db.session.userId = u.id;
@@ -91,7 +177,7 @@ function loginUser({ email, pass }) {
   return u;
 }
 
-/* --------- Productos / Stock --------- */
+/* ----------------- Productos / Stock (SIN CAMBIOS) ----------------- */
 function listProducts() {
   const db = loadDB();
   return db.products.filter(p => p.active);
@@ -128,7 +214,6 @@ function updateProduct(pId, patch) {
   return p;
 }
 
-// stockItems: array de strings (códigos/cuentas). Se guardan como texto.
 function addStock(pId, variant, stockItems) {
   const db = loadDB();
   const p = db.products.find(x => x.id === pId);
@@ -144,7 +229,7 @@ function addStock(pId, variant, stockItems) {
   return items.length;
 }
 
-/* --------- Compra (descuenta saldo y stock + entrega) --------- */
+/* ----------------- Compra (SIN CAMBIOS) ----------------- */
 function buyProduct({ pId, variant }) {
   const db = loadDB();
   const u = db.users.find(x => x.id === db.session.userId);
@@ -160,9 +245,7 @@ function buyProduct({ pId, variant }) {
   if (stockArr.length <= 0) throw new Error("Sin stock");
   if (u.balance < price) throw new Error("Saldo insuficiente");
 
-  // entrega: toma 1 item
   const delivered = stockArr.shift();
-
   u.balance -= price;
 
   const order = {
@@ -186,7 +269,7 @@ function myOrders() {
   return db.orders.filter(o => o.userId === u.id).sort((a,b)=> b.when.localeCompare(a.when));
 }
 
-/* --------- Recargas (manual) --------- */
+/* ----------------- Recargas (SIN CAMBIOS) ----------------- */
 function requestTopup({ amount, ref }) {
   const db = loadDB();
   const u = db.users.find(x => x.id === db.session.userId);
@@ -241,7 +324,7 @@ function rejectTopup(tId) {
   return t;
 }
 
-/* --------- Utilidad: reset total (solo pruebas) --------- */
+/* ----------------- Reset (SIN CAMBIOS) ----------------- */
 function resetAll() {
   localStorage.removeItem(DB_KEY);
   loadDB();
