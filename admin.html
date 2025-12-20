@@ -6,7 +6,6 @@
 <title>YDRX | Admin</title>
 
 <style>
-/* === MISMO ESTILO QUE DASHBOARD === */
 :root{
   --bg:#050608;
   --neon:#29ff6a;
@@ -18,7 +17,8 @@
 }
 *{box-sizing:border-box}
 body{
-  margin:0; padding:16px;
+  margin:0;
+  padding:16px;
   background:var(--bg);
   color:var(--text);
   font-family: system-ui, sans-serif;
@@ -32,7 +32,13 @@ body{
   padding:14px;
   box-shadow:var(--shadow);
 }
-.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+.row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between
+}
 .grid{display:grid; gap:10px}
 .card{
   border:1px solid var(--border);
@@ -49,17 +55,18 @@ button,input,select,textarea{
 }
 button{cursor:pointer}
 button:hover{background:rgba(41,255,106,.2)}
+textarea{width:100%}
 .muted{opacity:.75}
-pre{
-  background:#000;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid var(--border);
-}
-hr{border:0;border-top:1px solid rgba(41,255,106,.2)}
 .small{font-size:12px}
-.danger{border-color:#ff5a5a;color:#ffbcbc}
-.ok{border-color:#29ff6a}
+.danger{
+  border-color:#ff5a5a;
+  color:#ffbcbc;
+}
+hr{
+  border:0;
+  border-top:1px solid rgba(41,255,106,.2);
+  margin:14px 0;
+}
 </style>
 </head>
 
@@ -95,7 +102,7 @@ hr{border:0;border-top:1px solid rgba(41,255,106,.2)}
   <div class="card">
     <b>Crear producto</b>
     <div class="row" style="margin-top:8px">
-      <input id="pName" placeholder="Nombre">
+      <input id="pName" placeholder="Nombre producto">
       <input id="pPerfil" type="number" placeholder="Precio perfil">
       <input id="pCompleta" type="number" placeholder="Precio completa">
       <button onclick="crearProducto()">Crear</button>
@@ -106,84 +113,56 @@ hr{border:0;border-top:1px solid rgba(41,255,106,.2)}
 
   <!-- PRODUCTOS -->
   <div id="products" class="grid"></div>
-
 </div>
 
 <script src="app.js"></script>
 <script>
-/* ====== SEGURIDAD ====== */
+/* ===== SEGURIDAD ===== */
 const me = YDRX.requireLogin();
 if(me.role !== "admin"){
-  alert("Solo admin");
+  alert("Acceso solo para admin");
   location.href="dashboard.html";
 }
 document.getElementById("who").textContent = me.user+" ("+me.email+")";
 
-/* ====== SALDO ====== */
+/* ===== SALDO ===== */
 function darSaldo(){
   const user = document.getElementById("saldoUser").value.trim();
   const monto = Number(document.getElementById("saldoMonto").value);
+  if(!user || !monto) return alert("Datos incompletos");
+
   const db = YDRX.loadDB();
   const u = db.users.find(x=>x.user===user);
   if(!u) return alert("Usuario no existe");
+
   u.balance += monto;
   YDRX.saveDB(db);
-  alert("Saldo agregado");
+  alert("Saldo agregado correctamente");
 }
 
-/* ====== PRODUCTOS ====== */
+/* ===== PRODUCTOS ===== */
 function crearProducto(){
   YDRX.addProduct({
     name:pName.value,
     perfilPrice:pPerfil.value,
     completaPrice:pCompleta.value
   });
+  pName.value=pPerfil.value=pCompleta.value="";
   render();
 }
 
-function render(){
-  const db = YDRX.loadDB();
-  const wrap = document.getElementById("products");
-  wrap.innerHTML="";
-
-  db.products.forEach(p=>{
-    const c = document.createElement("div");
-    c.className="card";
-    c.innerHTML=`
-      <b>${p.name}</b>
-      <div class="small muted">Activo: ${p.active}</div>
-
-      <div class="row small">
-        Perfil $${p.variants.perfil.price} | Stock ${p.variants.perfil.stock.length}
-        <button onclick="toggle('${p.id}')">ON/OFF</button>
-      </div>
-
-      <div class="row small">
-        Completa $${p.variants.completa.price} | Stock ${p.variants.completa.stock.length}
-      </div>
-
-      <hr>
-
-      <b>Agregar stock</b>
-      <select id="v_${p.id}">
-        <option value="perfil">perfil</option>
-        <option value="completa">completa</option>
-      </select>
-      <textarea id="s_${p.id}" placeholder="1 cuenta por línea"></textarea>
-      <button onclick="addStock('${p.id}')">Subir stock</button>
-
-      <hr>
-      <b>Eliminar stock individual</b>
-      ${renderStock(p)}
-    `;
-    wrap.appendChild(c);
-  });
-}
-
-function toggle(id){
+function toggleProducto(id){
   const db = YDRX.loadDB();
   const p = db.products.find(x=>x.id===id);
   p.active = !p.active;
+  YDRX.saveDB(db);
+  render();
+}
+
+function eliminarProducto(id){
+  if(!confirm("¿Eliminar este producto y TODO su stock?")) return;
+  const db = YDRX.loadDB();
+  db.products = db.products.filter(p=>p.id!==id);
   YDRX.saveDB(db);
   render();
 }
@@ -195,26 +174,68 @@ function addStock(id){
   render();
 }
 
-function renderStock(p){
-  let html="";
-  ["perfil","completa"].forEach(v=>{
-    p.variants[v].stock.forEach((s,i)=>{
-      html+=`
-        <div class="row small">
-          <span>${v}: ${s}</span>
-          <button class="danger" onclick="delStock('${p.id}','${v}',${i})">X</button>
-        </div>
-      `;
-    });
-  });
-  return html || "<div class='muted small'>Sin stock</div>";
-}
-
-function delStock(pid,v,i){
+function delStock(pid,variant,index){
   const db = YDRX.loadDB();
-  db.products.find(p=>p.id===pid).variants[v].stock.splice(i,1);
+  const p = db.products.find(p=>p.id===pid);
+  p.variants[variant].stock.splice(index,1);
   YDRX.saveDB(db);
   render();
+}
+
+function render(){
+  const db = YDRX.loadDB();
+  const wrap = document.getElementById("products");
+  wrap.innerHTML="";
+
+  db.products.forEach(p=>{
+    const div = document.createElement("div");
+    div.className="card";
+
+    let stockHTML = "";
+    ["perfil","completa"].forEach(v=>{
+      p.variants[v].stock.forEach((s,i)=>{
+        stockHTML += `
+          <div class="row small">
+            <span>${v}: ${s}</span>
+            <button class="danger" onclick="delStock('${p.id}','${v}',${i})">X</button>
+          </div>`;
+      });
+    });
+
+    if(!stockHTML) stockHTML = "<div class='muted small'>Sin stock</div>";
+
+    div.innerHTML = `
+      <div class="row">
+        <b>${p.name}</b>
+        <button class="danger small" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+      </div>
+
+      <div class="small muted">
+        Perfil $${p.variants.perfil.price} | Completa $${p.variants.completa.price}
+      </div>
+
+      <div class="row small">
+        Estado: ${p.active ? "Activo" : "Inactivo"}
+        <button onclick="toggleProducto('${p.id}')">ON / OFF</button>
+      </div>
+
+      <hr>
+
+      <b>Agregar stock</b>
+      <select id="v_${p.id}">
+        <option value="perfil">perfil</option>
+        <option value="completa">completa</option>
+      </select>
+      <textarea id="s_${p.id}" placeholder="Una cuenta por línea"></textarea>
+      <button onclick="addStock('${p.id}')">Subir stock</button>
+
+      <hr>
+
+      <b>Stock actual</b>
+      ${stockHTML}
+    `;
+    wrap.appendChild(div);
+  });
 }
 
 render();
