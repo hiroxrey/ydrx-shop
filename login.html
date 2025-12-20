@@ -123,7 +123,7 @@ function draw(){
   for(const s of stars){
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(232,255,241,${s.a})`;
+ ctx.fillStyle = `rgba(232,255,241,${s.a})`;
     ctx.fill();
   }
   requestAnimationFrame(draw);
@@ -131,15 +131,25 @@ function draw(){
 resize();buildStars();draw();
 addEventListener("resize",()=>{resize();buildStars()});
 
-/* LOGIN */
-document.getElementById("loginForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const email=email.value.trim();
-  const password=password.value;
-  const {error}=await supabase.auth.signInWithPassword({email,password});
-  if(error) return alert(error.message);
-  location.href="dashboard.html";
-});
+<script>
+  // ...tu código de animación igual...
+
+  /* LOGIN */
+  const emailEl = document.getElementById("email");
+  const passEl  = document.getElementById("password");
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = emailEl.value.trim().toLowerCase();
+    const password = passEl.value;
+
+    const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) return alert(error.message);
+
+    window.location.href = "dashboard.html";
+  });
 </script>
 </body>
 </html>
+
