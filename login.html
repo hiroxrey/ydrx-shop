@@ -1,4 +1,4 @@
-<!doctype html>
+<!doctype html> 
 <html lang="es">
 <head>
   <meta charset="utf-8" />
@@ -61,9 +61,7 @@
 
     .form{position:relative; display:grid; gap:12px; margin-top:8px;}
     label{font-size:12px; color:rgba(232,255,241,.82);}
-    .field{
-      display:grid; gap:6px;
-    }
+    .field{display:grid; gap:6px;}
     input{
       width:100%;
       padding:12px 12px;
@@ -121,6 +119,7 @@
     .tiny a:hover{opacity:1}
   </style>
 </head>
+
 <body>
   <canvas id="space"></canvas>
 
@@ -156,8 +155,12 @@
     </section>
   </div>
 
+  <!-- ✅ Supabase primero -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
   <script>
-    // Fondo: estrellas + meteoros (igual que index)
+    // Fondo: estrellas + meteoros
     const canvas = document.getElementById("space");
     const ctx = canvas.getContext("2d", { alpha: true });
 
@@ -193,12 +196,7 @@
       const vx = fromRight ? -(Math.random()*6 + 10) : (Math.random()*6 + 10);
       const vy = (Math.random()*4 + 6);
 
-      meteors.push({
-        x, y, vx, vy,
-        life: 0,
-        maxLife: Math.random()*40 + 40,
-        len: Math.random()*180 + 120
-      });
+      meteors.push({ x, y, vx, vy, life:0, maxLife: Math.random()*40 + 40, len: Math.random()*180 + 120 });
     }
 
     let meteorTimer = 0;
@@ -267,25 +265,23 @@
     resize();
     requestAnimationFrame(draw);
 
-   document.getElementById("loginForm").addEventListener("submit", (e) => {
-  e.preventDefault();
+    // ✅ LOGIN CON SUPABASE
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  try {
-    YDRX.loginUser({
-      email: document.getElementById("email").value,
-      pass: document.getElementById("password").value
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+
+      window.location.href = "dashboard.html";
     });
-    window.location.href = "dashboard.html";
-  } catch (err) {
-    alert(err.message);
-  }
-});
 
     document.getElementById("forgot").addEventListener("click", (e) => {
       e.preventDefault();
       alert("Aquí va tu flujo de recuperar contraseña.");
     });
   </script>
-<script src="app.js"></script>
 </body>
 </html>
