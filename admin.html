@@ -1,212 +1,205 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin - Recargas</title>
+  <meta charset="UTF-8" />
+  <title>Panel Admin — Recargas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    body{font-family:system-ui,Arial; background:#0b0f14; color:#e6edf3; margin:0}
-    .wrap{max-width:980px; margin:0 auto; padding:20px}
-    .card{background:#111826; border:1px solid #1f2a3a; border-radius:12px; padding:14px; margin:10px 0}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
-    input{background:#0b1220; border:1px solid #263248; color:#e6edf3; padding:10px; border-radius:10px; width:100%}
-    button{padding:10px 12px; border:0; border-radius:10px; cursor:pointer; font-weight:600}
-    .btn{background:#1b2638; color:#e6edf3}
-    .ok{background:#16a34a; color:#04140a}
-    .bad{background:#ef4444; color:#1b0a0a}
-    .muted{color:#9fb0c3; font-size:13px}
-    .pill{padding:4px 10px; border-radius:999px; border:1px solid #2a3a52; font-size:12px}
-    .p-pend{background:#1f2937}
-    .p-ok{background:#064e3b; border-color:#10b981}
-    .p-bad{background:#4c0519; border-color:#fb7185}
-    a{color:#7dd3fc}
+    :root{
+      --bg:#0b0f14;
+      --card:#0f1621;
+      --green:#00ff88;
+      --green-soft:rgba(0,255,136,.2);
+      --text:#e6f1ff;
+      --muted:#8aa4b2;
+    }
+
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    body{
+      margin:0;
+      background:radial-gradient(circle at top, #0e1623, #070b11);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .card{
+      width:100%;
+      max-width:520px;
+      background:var(--card);
+      border:1px solid var(--green-soft);
+      box-shadow:0 0 30px rgba(0,255,136,.15);
+      border-radius:16px;
+      padding:24px;
+    }
+
+    h1{
+      margin:0 0 16px;
+      color:var(--green);
+      text-align:center;
+      font-weight:700;
+    }
+
+    input{
+      width:100%;
+      padding:12px;
+      margin:8px 0;
+      border-radius:10px;
+      border:1px solid var(--green-soft);
+      background:#05080d;
+      color:white;
+      outline:none;
+    }
+
+    button{
+      width:100%;
+      padding:12px;
+      margin-top:12px;
+      border-radius:12px;
+      border:1px solid var(--green);
+      background:transparent;
+      color:var(--green);
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    button:hover{
+      background:var(--green);
+      color:#000;
+    }
+
+    .hidden{display:none}
+
+    .recarga{
+      border:1px solid var(--green-soft);
+      border-radius:12px;
+      padding:12px;
+      margin-top:12px;
+      background:#070b11;
+    }
+
+    .acciones{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .ok{border-color:#00ff88;color:#00ff88}
+    .no{border-color:#ff4444;color:#ff4444}
+
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+    }
+
+    .muted{color:var(--muted);font-size:14px}
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h2>Panel Admin — Recargas</h2>
-    <div class="muted" id="status">Cargando…</div>
 
-    <!-- LOGIN -->
-    <div class="card" id="loginCard">
-      <h3>Iniciar sesión</h3>
-      <div class="row">
-        <div style="flex:1; min-width:240px">
-          <input id="email" placeholder="Email admin" />
-        </div>
-        <div style="flex:1; min-width:240px">
-          <input id="pass" type="password" placeholder="Contraseña" />
-        </div>
-        <button class="btn" id="btnLogin">Entrar</button>
-      </div>
-      <div class="muted" style="margin-top:10px">
-        *Tu admin debe existir en Supabase Auth. (Email+password)
-      </div>
-    </div>
+<div class="card" id="login">
+  <h1>Admin — Recargas</h1>
+  <input id="email" placeholder="Correo admin">
+  <input id="password" type="password" placeholder="Contraseña">
+  <button onclick="login()">Entrar</button>
+  <p class="muted">* El admin debe existir en Supabase Auth</p>
+</div>
 
-    <!-- APP -->
-    <div class="card" id="appCard" style="display:none">
-      <div class="row">
-        <div>
-          <b>Sesión:</b> <span id="who"></span>
-          <span class="pill p-pend" id="countPill">Pendientes: 0</span>
-        </div>
-        <div class="row" style="gap:8px">
-          <button class="btn" id="btnRefresh">Refrescar</button>
-          <button class="btn" id="btnLogout">Salir</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="list"></div>
+<div class="card hidden" id="panel">
+  <div class="top">
+    <h1>Recargas pendientes</h1>
+    <button onclick="logout()">Salir</button>
   </div>
+  <div id="lista"></div>
+</div>
 
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+<script>
+/* 🔴 PEGA TUS DATOS DE SUPABASE */
+const supabase = supabase.createClient(
+  "https://TU-PROYECTO.supabase.co",
+  "TU_PUBLIC_ANON_KEY"
+);
 
-    // ====== CAMBIA ESTO ======
-    const SUPABASE_URL = "TU_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "TU_SUPABASE_ANON_KEY";
-    // =========================
+/* LOGIN */
+async function login(){
+  const email = email.value;
+  const password = password.value;
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ alert("Credenciales incorrectas"); return; }
 
-    const $ = (id)=>document.getElementById(id);
-    const statusEl = $("status");
-    const loginCard = $("loginCard");
-    const appCard = $("appCard");
-    const listEl = $("list");
-    const whoEl = $("who");
-    const countPill = $("countPill");
+  login.classList.add("hidden");
+  panel.classList.remove("hidden");
+  cargarRecargas();
+}
 
-    function setStatus(t){ statusEl.textContent = t; }
-    function esc(s){ return String(s ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+/* LOGOUT */
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
+}
 
-    function pillForEstado(estado){
-      if(estado==="aprobado") return `<span class="pill p-ok">aprobado</span>`;
-      if(estado==="rechazado") return `<span class="pill p-bad">rechazado</span>`;
-      return `<span class="pill p-pend">pendiente</span>`;
-    }
+/* CARGAR RECARGAS */
+async function cargarRecargas(){
+  const { data, error } = await supabase
+    .from("recargas")
+    .select("*")
+    .eq("estado","pendiente")
+    .order("created_at",{ascending:true});
 
-    async function renderPendientes(){
-      setStatus("Cargando recargas…");
-      listEl.innerHTML = "";
+  lista.innerHTML = "";
+  if(!data || data.length===0){
+    lista.innerHTML = "<p class='muted'>No hay recargas pendientes</p>";
+    return;
+  }
 
-      // Solo admins deben poder ver (RLS). Si no eres admin, aquí te va a dar error.
-      const { data, error } = await supabase
-        .from("recargas")
-        .select("id, created_at, usuario, monto, estado, mensaje")
-        .order("created_at", { ascending: false })
-        .limit(100);
+  data.forEach(r=>{
+    const div = document.createElement("div");
+    div.className="recarga";
+    div.innerHTML=`
+      <b>${r.usuario}</b><br>
+      Monto: $${r.monto}<br>
+      <span class="muted">${r.referencia||"sin referencia"}</span>
+      <div class="acciones">
+        <button class="ok" onclick="aprobar(${r.id},'${r.usuario}',${r.monto})">Aprobar</button>
+        <button class="no" onclick="rechazar(${r.id})">Rechazar</button>
+      </div>
+    `;
+    lista.appendChild(div);
+  });
+}
 
-      if(error){
-        setStatus("Error: " + error.message);
-        return;
-      }
+/* APROBAR */
+async function aprobar(id,user,monto){
+  await supabase.rpc("sumar_saldo_admin",{ p_user:user, p_monto:monto });
+  await supabase.from("recargas").update({estado:"aprobado"}).eq("id",id);
+  cargarRecargas();
+}
 
-      const pendientes = (data||[]).filter(r => (r.estado ?? "pendiente") === "pendiente");
-      countPill.textContent = `Pendientes: ${pendientes.length}`;
-      setStatus("Listo.");
+/* RECHAZAR */
+async function rechazar(id){
+  await supabase.from("recargas").update({estado:"rechazado"}).eq("id",id);
+  cargarRecargas();
+}
 
-      if(!data || data.length===0){
-        listEl.innerHTML = `<div class="card">No hay recargas.</div>`;
-        return;
-      }
+/* SESIÓN ACTIVA */
+supabase.auth.getSession().then(({data})=>{
+  if(data.session){
+    login.classList.add("hidden");
+    panel.classList.remove("hidden");
+    cargarRecargas();
+  }
+});
+</script>
 
-      listEl.innerHTML = data.map(r=>{
-        const id = r.id;
-        const usuario = esc(r.usuario);
-        const monto = r.monto ?? 0;
-        const estado = r.estado ?? "pendiente";
-        const msg = esc(r.mensaje || "");
-        const fecha = new Date(r.created_at).toLocaleString();
-
-        const disabled = estado !== "pendiente" ? "disabled" : "";
-        const btns = estado==="pendiente" ? `
-          <button class="ok" data-aprobar="${id}">Aprobar</button>
-          <button class="bad" data-rechazar="${id}">Rechazar</button>
-        ` : ``;
-
-        return `
-          <div class="card">
-            <div class="row">
-              <div>
-                <div><b>Usuario:</b> ${usuario}</div>
-                <div><b>Monto:</b> ${monto}</div>
-                <div class="muted">${fecha}</div>
-                ${msg ? `<div class="muted"><b>Mensaje:</b> ${msg}</div>` : ""}
-              </div>
-              <div class="row" style="gap:8px">
-                ${pillForEstado(estado)}
-                ${btns}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function aprobar(id){
-      setStatus("Aprobando…");
-      // RPC (recomendado) para sumar saldo + actualizar estado
-      const { error } = await supabase.rpc("aprobar_recarga", { p_recarga_id: id });
-      if(error){ setStatus("Error: " + error.message); return; }
-      await renderPendientes();
-    }
-
-    async function rechazar(id){
-      setStatus("Rechazando…");
-      const { error } = await supabase.rpc("rechazar_recarga", { p_recarga_id: id });
-      if(error){ setStatus("Error: " + error.message); return; }
-      await renderPendientes();
-    }
-
-    listEl.addEventListener("click", async (e)=>{
-      const a = e.target?.getAttribute?.("data-aprobar");
-      const r = e.target?.getAttribute?.("data-rechazar");
-      if(a) await aprobar(a);
-      if(r) await rechazar(r);
-    });
-
-    $("btnLogin").onclick = async ()=>{
-      const email = $("email").value.trim();
-      const pass = $("pass").value;
-      setStatus("Entrando…");
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      if(error){ setStatus("Error: " + error.message); return; }
-    };
-
-    $("btnLogout").onclick = async ()=>{
-      await supabase.auth.signOut();
-    };
-
-    $("btnRefresh").onclick = renderPendientes;
-
-    // Realtime: si entra una recarga, refresca
-    supabase.channel("recargas-admin")
-      .on("postgres_changes", { event:"*", schema:"public", table:"recargas" }, async ()=> {
-        await renderPendientes();
-      })
-      .subscribe();
-
-    async function onAuth(){
-      const { data: { session } } = await supabase.auth.getSession();
-      if(session){
-        loginCard.style.display = "none";
-        appCard.style.display = "block";
-        whoEl.textContent = session.user.email;
-        await renderPendientes();
-      }else{
-        loginCard.style.display = "block";
-        appCard.style.display = "none";
-        listEl.innerHTML = "";
-        countPill.textContent = "Pendientes: 0";
-        setStatus("Inicia sesión.");
-      }
-    }
-
-    supabase.auth.onAuthStateChange(onAuth);
-    onAuth();
-  </script>
 </body>
 </html>
