@@ -1,205 +1,223 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Panel Admin — Recargas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YDRX | Admin</title>
 
-  <!-- SUPABASE -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    :root{
-      --bg:#0b0f14;
-      --card:#0f1621;
-      --green:#00ff88;
-      --green-soft:rgba(0,255,136,.2);
-      --text:#e6f1ff;
-      --muted:#8aa4b2;
-    }
-
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    body{
-      margin:0;
-      background:radial-gradient(circle at top, #0e1623, #070b11);
-      color:var(--text);
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-    }
-
-    .card{
-      width:100%;
-      max-width:520px;
-      background:var(--card);
-      border:1px solid var(--green-soft);
-      box-shadow:0 0 30px rgba(0,255,136,.15);
-      border-radius:16px;
-      padding:24px;
-    }
-
-    h1{
-      margin:0 0 16px;
-      color:var(--green);
-      text-align:center;
-      font-weight:700;
-    }
-
-    input{
-      width:100%;
-      padding:12px;
-      margin:8px 0;
-      border-radius:10px;
-      border:1px solid var(--green-soft);
-      background:#05080d;
-      color:white;
-      outline:none;
-    }
-
-    button{
-      width:100%;
-      padding:12px;
-      margin-top:12px;
-      border-radius:12px;
-      border:1px solid var(--green);
-      background:transparent;
-      color:var(--green);
-      font-weight:600;
-      cursor:pointer;
-    }
-
-    button:hover{
-      background:var(--green);
-      color:#000;
-    }
-
-    .hidden{display:none}
-
-    .recarga{
-      border:1px solid var(--green-soft);
-      border-radius:12px;
-      padding:12px;
-      margin-top:12px;
-      background:#070b11;
-    }
-
-    .acciones{
-      display:flex;
-      gap:10px;
-      margin-top:10px;
-    }
-
-    .ok{border-color:#00ff88;color:#00ff88}
-    .no{border-color:#ff4444;color:#ff4444}
-
-    .top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:10px;
-    }
-
-    .muted{color:var(--muted);font-size:14px}
-  </style>
+<style>
+/* === MISMO ESTILO QUE DASHBOARD === */
+:root{
+  --bg:#050608;
+  --neon:#29ff6a;
+  --text:#e8fff1;
+  --muted:#a8d6b8;
+  --card: rgba(0,0,0,.55);
+  --border: rgba(41,255,106,.55);
+  --shadow: 0 0 12px rgba(41,255,106,.55), 0 0 28px rgba(41,255,106,.35);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:16px;
+  background:var(--bg);
+  color:var(--text);
+  font-family: system-ui, sans-serif;
+}
+.box{
+  max-width:1100px;
+  margin:auto;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:var(--shadow);
+}
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+.grid{display:grid; gap:10px}
+.card{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(0,0,0,.45);
+}
+button,input,select,textarea{
+  padding:10px 12px;
+  border-radius:12px;
+  border:1.5px solid var(--border);
+  background:rgba(0,0,0,.45);
+  color:var(--text);
+}
+button{cursor:pointer}
+button:hover{background:rgba(41,255,106,.2)}
+.muted{opacity:.75}
+pre{
+  background:#000;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+hr{border:0;border-top:1px solid rgba(41,255,106,.2)}
+.small{font-size:12px}
+.danger{border-color:#ff5a5a;color:#ffbcbc}
+.ok{border-color:#29ff6a}
+</style>
 </head>
 
 <body>
 
-<div class="card" id="login">
-  <h1>Admin — Recargas</h1>
-  <input id="email" placeholder="Correo admin">
-  <input id="password" type="password" placeholder="Contraseña">
-  <button onclick="login()">Entrar</button>
-  <p class="muted">* El admin debe existir en Supabase Auth</p>
-</div>
-
-<div class="card hidden" id="panel">
-  <div class="top">
-    <h1>Recargas pendientes</h1>
-    <button onclick="logout()">Salir</button>
+<div class="box">
+  <div class="row">
+    <div>
+      <b>Panel Admin</b>
+      <div class="muted" id="who"></div>
+    </div>
+    <div class="row">
+      <button onclick="location.href='dashboard.html'">Dashboard</button>
+      <button onclick="YDRX.logout()">Salir</button>
+    </div>
   </div>
-  <div id="lista"></div>
+
+  <hr>
+
+  <!-- DAR SALDO -->
+  <div class="card">
+    <b>Dar saldo a usuario</b>
+    <div class="row" style="margin-top:8px">
+      <input id="saldoUser" placeholder="@user">
+      <input id="saldoMonto" type="number" placeholder="Monto">
+      <button onclick="darSaldo()">Agregar saldo</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- CREAR PRODUCTO -->
+  <div class="card">
+    <b>Crear producto</b>
+    <div class="row" style="margin-top:8px">
+      <input id="pName" placeholder="Nombre">
+      <input id="pPerfil" type="number" placeholder="Precio perfil">
+      <input id="pCompleta" type="number" placeholder="Precio completa">
+      <button onclick="crearProducto()">Crear</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- PRODUCTOS -->
+  <div id="products" class="grid"></div>
+
 </div>
 
+<script src="app.js"></script>
 <script>
-/* 🔴 PEGA TUS DATOS DE SUPABASE */
-const supabase = supabase.createClient(
-  "https://TU-PROYECTO.supabase.co",
-  "TU_PUBLIC_ANON_KEY"
-);
+/* ====== SEGURIDAD ====== */
+const me = YDRX.requireLogin();
+if(me.role !== "admin"){
+  alert("Solo admin");
+  location.href="dashboard.html";
+}
+document.getElementById("who").textContent = me.user+" ("+me.email+")";
 
-/* LOGIN */
-async function login(){
-  const email = email.value;
-  const password = password.value;
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error){ alert("Credenciales incorrectas"); return; }
-
-  login.classList.add("hidden");
-  panel.classList.remove("hidden");
-  cargarRecargas();
+/* ====== SALDO ====== */
+function darSaldo(){
+  const user = document.getElementById("saldoUser").value.trim();
+  const monto = Number(document.getElementById("saldoMonto").value);
+  const db = YDRX.loadDB();
+  const u = db.users.find(x=>x.user===user);
+  if(!u) return alert("Usuario no existe");
+  u.balance += monto;
+  YDRX.saveDB(db);
+  alert("Saldo agregado");
 }
 
-/* LOGOUT */
-async function logout(){
-  await supabase.auth.signOut();
-  location.reload();
+/* ====== PRODUCTOS ====== */
+function crearProducto(){
+  YDRX.addProduct({
+    name:pName.value,
+    perfilPrice:pPerfil.value,
+    completaPrice:pCompleta.value
+  });
+  render();
 }
 
-/* CARGAR RECARGAS */
-async function cargarRecargas(){
-  const { data, error } = await supabase
-    .from("recargas")
-    .select("*")
-    .eq("estado","pendiente")
-    .order("created_at",{ascending:true});
+function render(){
+  const db = YDRX.loadDB();
+  const wrap = document.getElementById("products");
+  wrap.innerHTML="";
 
-  lista.innerHTML = "";
-  if(!data || data.length===0){
-    lista.innerHTML = "<p class='muted'>No hay recargas pendientes</p>";
-    return;
-  }
+  db.products.forEach(p=>{
+    const c = document.createElement("div");
+    c.className="card";
+    c.innerHTML=`
+      <b>${p.name}</b>
+      <div class="small muted">Activo: ${p.active}</div>
 
-  data.forEach(r=>{
-    const div = document.createElement("div");
-    div.className="recarga";
-    div.innerHTML=`
-      <b>${r.usuario}</b><br>
-      Monto: $${r.monto}<br>
-      <span class="muted">${r.referencia||"sin referencia"}</span>
-      <div class="acciones">
-        <button class="ok" onclick="aprobar(${r.id},'${r.usuario}',${r.monto})">Aprobar</button>
-        <button class="no" onclick="rechazar(${r.id})">Rechazar</button>
+      <div class="row small">
+        Perfil $${p.variants.perfil.price} | Stock ${p.variants.perfil.stock.length}
+        <button onclick="toggle('${p.id}')">ON/OFF</button>
       </div>
+
+      <div class="row small">
+        Completa $${p.variants.completa.price} | Stock ${p.variants.completa.stock.length}
+      </div>
+
+      <hr>
+
+      <b>Agregar stock</b>
+      <select id="v_${p.id}">
+        <option value="perfil">perfil</option>
+        <option value="completa">completa</option>
+      </select>
+      <textarea id="s_${p.id}" placeholder="1 cuenta por línea"></textarea>
+      <button onclick="addStock('${p.id}')">Subir stock</button>
+
+      <hr>
+      <b>Eliminar stock individual</b>
+      ${renderStock(p)}
     `;
-    lista.appendChild(div);
+    wrap.appendChild(c);
   });
 }
 
-/* APROBAR */
-async function aprobar(id,user,monto){
-  await supabase.rpc("sumar_saldo_admin",{ p_user:user, p_monto:monto });
-  await supabase.from("recargas").update({estado:"aprobado"}).eq("id",id);
-  cargarRecargas();
+function toggle(id){
+  const db = YDRX.loadDB();
+  const p = db.products.find(x=>x.id===id);
+  p.active = !p.active;
+  YDRX.saveDB(db);
+  render();
 }
 
-/* RECHAZAR */
-async function rechazar(id){
-  await supabase.from("recargas").update({estado:"rechazado"}).eq("id",id);
-  cargarRecargas();
+function addStock(id){
+  const variant = document.getElementById("v_"+id).value;
+  const items = document.getElementById("s_"+id).value.split("\n");
+  YDRX.addStock(id, variant, items);
+  render();
 }
 
-/* SESIÓN ACTIVA */
-supabase.auth.getSession().then(({data})=>{
-  if(data.session){
-    login.classList.add("hidden");
-    panel.classList.remove("hidden");
-    cargarRecargas();
-  }
-});
+function renderStock(p){
+  let html="";
+  ["perfil","completa"].forEach(v=>{
+    p.variants[v].stock.forEach((s,i)=>{
+      html+=`
+        <div class="row small">
+          <span>${v}: ${s}</span>
+          <button class="danger" onclick="delStock('${p.id}','${v}',${i})">X</button>
+        </div>
+      `;
+    });
+  });
+  return html || "<div class='muted small'>Sin stock</div>";
+}
+
+function delStock(pid,v,i){
+  const db = YDRX.loadDB();
+  db.products.find(p=>p.id===pid).variants[v].stock.splice(i,1);
+  YDRX.saveDB(db);
+  render();
+}
+
+render();
 </script>
-
 </body>
 </html>
