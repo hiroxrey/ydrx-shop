@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>YDRX | Registro</title>
+
   <style>
     :root{
       --bg:#050608;
@@ -11,7 +12,9 @@
       --neon2:#7CFFB1;
       --text:#e8fff1;
       --muted:#a8d6b8;
-      --shadow: 0 0 12px rgba(41,255,106,.55), 0 0 28px rgba(41,255,106,.35), 0 0 60px rgba(41,255,106,.18);
+      --shadow: 0 0 12px rgba(41,255,106,.55),
+                0 0 28px rgba(41,255,106,.35),
+                0 0 60px rgba(41,255,106,.18);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -22,346 +25,123 @@
       color: var(--text);
       overflow:hidden;
     }
-    canvas#space{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0;}
+    canvas#space{position:fixed; inset:0; width:100%; height:100%; z-index:0;}
     .wrap{position:relative; z-index:1; min-height:100%; display:flex; align-items:center; justify-content:center; padding:28px 16px;}
     .brand{
       position:absolute; top:22px; left:50%; transform:translateX(-50%);
-      letter-spacing:.25em; font-weight:900; font-size:clamp(24px,4vw,44px);
-      text-transform:uppercase; color:var(--text);
-      text-shadow: 0 0 10px rgba(41,255,106,.6), 0 0 30px rgba(41,255,106,.35);
-      filter: drop-shadow(0 0 16px rgba(41,255,106,.25));
-      user-select:none;
-    }
-    .brand::after{
-      content:""; display:block; margin:10px auto 0; width:120px; height:2px;
-      background: linear-gradient(90deg, transparent, rgba(41,255,106,.9), transparent);
-      box-shadow: var(--shadow); opacity:.9;
+      letter-spacing:.25em; font-weight:900;
+      font-size:clamp(24px,4vw,44px);
+      text-transform:uppercase;
+      text-shadow:0 0 10px rgba(41,255,106,.6),0 0 30px rgba(41,255,106,.35);
     }
     .card{
       width:min(520px,92vw);
       padding:26px 22px;
       border-radius:18px;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(10px);
       border:1.5px solid rgba(41,255,106,.55);
-      box-shadow: var(--shadow);
-      position:relative;
-      overflow:hidden;
+      box-shadow:var(--shadow);
     }
-    .card::before{
-      content:"";
-      position:absolute; inset:-2px; border-radius:18px;
-      background:
-        radial-gradient(1000px 300px at 20% 0%, rgba(41,255,106,.18), transparent 55%),
-        radial-gradient(800px 280px at 90% 110%, rgba(124,255,177,.14), transparent 55%);
-      pointer-events:none;
-    }
-    .headline{position:relative; margin:0 0 6px; font-size:22px; font-weight:800;}
-    .sub{position:relative; margin:0 0 18px; color:var(--muted); line-height:1.4; font-size:14px;}
-
-    .form{position:relative; display:grid; gap:12px; margin-top:8px;}
-    .grid2{display:grid; gap:12px; grid-template-columns: 1fr 1fr;}
-    @media (max-width:520px){ .grid2{grid-template-columns:1fr;} }
-
-    label{font-size:12px; color:rgba(232,255,241,.82);}
-    .field{display:grid; gap:6px;}
-    .hint{font-size:11px; color:rgba(168,214,184,.9); margin-top:2px}
-
+    .headline{font-size:22px;font-weight:800}
+    .sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+    .form{display:grid;gap:12px}
+    .grid2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+    label{font-size:12px}
     input{
-      width:100%;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1.5px solid rgba(41,255,106,.35);
-      background: rgba(0,0,0,.45);
-      color: var(--text);
-      outline:none;
-      transition: box-shadow .15s ease, border-color .15s ease;
+      width:100%;padding:12px;border-radius:14px;
+      background:rgba(0,0,0,.45);color:var(--text);
+      border:1.5px solid rgba(41,255,106,.35)
     }
-    input:focus{
-      border-color: rgba(41,255,106,.85);
-      box-shadow: 0 0 0 3px rgba(41,255,106,.14), 0 0 18px rgba(41,255,106,.20);
-    }
-
-    .row{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      margin-top:2px;
-    }
-    .link{
-      color: rgba(124,255,177,.95);
-      text-decoration:none;
-      border-bottom: 1px dashed rgba(124,255,177,.65);
-      font-size:12px;
-      opacity:.95;
-    }
-    .link:hover{opacity:1}
-
     .btn{
-      display:flex; align-items:center; justify-content:center;
-      width:100%;
-      padding:13px 14px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
+      padding:13px;border-radius:14px;font-weight:900;
       border:1.5px solid rgba(41,255,106,.85);
-      background: rgba(41,255,106,.18);
-      color: var(--text);
-      box-shadow: 0 0 14px rgba(41,255,106,.25);
-      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-      user-select:none;
-      margin-top:6px;
+      background:rgba(41,255,106,.18);color:var(--text);
+      cursor:pointer
     }
-    .btn:hover{transform:translateY(-1px); box-shadow: 0 0 14px rgba(41,255,106,.35), 0 0 34px rgba(41,255,106,.18); background: rgba(41,255,106,.22);}
-    .btn:active{transform:translateY(0px) scale(.99);}
-    .btn:disabled{opacity:.45; cursor:not-allowed;}
-
-    .tiny{
-      position:relative;
-      margin-top:12px;
-      font-size:12px;
-      color: rgba(232,255,241,.74);
-      text-align:center;
-    }
-
-    .status{
-      font-size:12px;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(41,255,106,.35);
-      background: rgba(0,0,0,.35);
-      color: rgba(232,255,241,.86);
-      display:none;
-    }
-    .status.show{display:block;}
-    .status.bad{border-color: rgba(255,90,90,.55); color: rgba(255,190,190,.95);}
-    .status.good{border-color: rgba(41,255,106,.55); color: rgba(200,255,220,.95);}
+    .btn:disabled{opacity:.5}
+    .status{display:none;font-size:12px;padding:10px;border-radius:12px}
+    .status.show{display:block}
+    .status.bad{border:1px solid #ff5a5a}
+    .status.good{border:1px solid #29ff6a}
   </style>
 </head>
 
 <body>
-  <canvas id="space"></canvas>
+<canvas id="space"></canvas>
 
-  <div class="wrap">
-    <div class="brand">YDRX</div>
+<div class="wrap">
+  <div class="brand">YDRX</div>
 
-    <section class="card" aria-label="Registro">
-      <h1 class="headline">Crear cuenta</h1>
-      <p class="sub">Regístrate para comprar con saldo y recibir entrega automática.</p>
+  <section class="card">
+    <h1 class="headline">Crear cuenta</h1>
+    <p class="sub">Regístrate para comprar con saldo.</p>
 
-      <form class="form" id="registerForm">
-        <div class="field">
-          <label for="email">Correo</label>
-          <input id="email" type="email" autocomplete="email" placeholder="tu@email.com" required />
-        </div>
+    <form id="registerForm" class="form">
+      <div>
+        <label>Correo</label>
+        <input id="email" type="email" required>
+      </div>
 
-        <div class="field">
-          <label for="user">Tu @user</label>
-          <input id="user" type="text" inputmode="text" placeholder="@drax_07" required />
-          <div class="hint">Se permite: letras, números, guion bajo.</div>
-        </div>
+      <div>
+        <label>@user</label>
+        <input id="user" required>
+      </div>
 
-        <div class="grid2">
-          <div class="field">
-            <label for="pass">Contraseña</label>
-            <input id="pass" type="password" autocomplete="new-password" placeholder="••••••••" required />
-          </div>
-          <div class="field">
-            <label for="pass2">Confirmar contraseña</label>
-            <input id="pass2" type="password" autocomplete="new-password" placeholder="••••••••" required />
-          </div>
-        </div>
+      <div class="grid2">
+        <input id="pass" type="password" placeholder="Contraseña" required>
+        <input id="pass2" type="password" placeholder="Confirmar" required>
+      </div>
 
-        <div id="status" class="status"></div>
+      <div id="status" class="status"></div>
 
-        <div class="row">
-          <a class="link" href="index.html">← Volver</a>
-          <a class="link" href="login.html">Ya tengo cuenta</a>
-        </div>
+      <button class="btn" id="submitBtn">Crear cuenta</button>
+    </form>
+  </section>
+</div>
 
-        <button class="btn" id="submitBtn" type="submit">Crear cuenta</button>
+<!-- ✅ Supabase SOLO UNA VEZ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 
-        <div class="tiny">
-          Al registrarte aceptas los términos (luego los agregamos).
-        </div>
-      </form>
-    </section>
-  </div>
+<script>
+/* ---------- Registro ---------- */
+const statusEl = document.getElementById("status");
+const btn = document.getElementById("submitBtn");
 
-  <!-- ✅ Supabase primero -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+function setStatus(msg,type){
+  statusEl.textContent = msg;
+  statusEl.className = "status show " + type;
+}
 
-  <script>
-    // Fondo: estrellas + meteoros
-    const canvas = document.getElementById("space");
-    const ctx = canvas.getContext("2d", { alpha: true });
+document.getElementById("registerForm").addEventListener("submit", async e=>{
+  e.preventDefault();
 
-    function resize(){
-      const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      canvas.width = Math.floor(innerWidth * DPR);
-      canvas.height = Math.floor(innerHeight * DPR);
-      canvas.style.width = innerWidth + "px";
-      canvas.style.height = innerHeight + "px";
-      ctx.setTransform(DPR,0,0,DPR,0,0);
-      buildStars();
-    }
-    window.addEventListener("resize", resize);
+  const email = email.value.trim();
+  const user = userEl = document.getElementById("user").value.trim();
+  const p1 = pass.value;
+  const p2 = pass2.value;
 
-    let stars = [];
-    function buildStars(){
-      const count = Math.floor((innerWidth * innerHeight) / 9000);
-      stars = Array.from({length: Math.max(120, Math.min(520, count))}, () => ({
-        x: Math.random() * innerWidth,
-        y: Math.random() * innerHeight,
-        r: Math.random() * 1.4 + 0.2,
-        a: Math.random() * 0.6 + 0.2,
-        tw: Math.random() * 0.02 + 0.005
-      }));
-    }
+  if(p1!==p2) return setStatus("Contraseñas no coinciden","bad");
 
-    const meteors = [];
-    function spawnMeteor(){
-      const fromRight = Math.random() < 0.6;
-      const x = fromRight ? innerWidth + 60 : Math.random() * innerWidth;
-      const y = fromRight ? Math.random() * (innerHeight * 0.6) : -60;
-      const vx = fromRight ? -(Math.random()*6 + 10) : (Math.random()*6 + 10);
-      const vy = (Math.random()*4 + 6);
+  btn.disabled=true;
+  setStatus("Creando cuenta...","good");
 
-      meteors.push({ x, y, vx, vy, life: 0, maxLife: Math.random()*40 + 40, len: Math.random()*180 + 120 });
-    }
+  const { error } = await supabase.auth.signUp({
+    email,
+    password:p1,
+    options:{ data:{ user } }
+  });
 
-    let meteorTimer = 0;
-    let last = performance.now();
-    function draw(now){
-      const dt = now - last;
-      last = now;
+  if(error){
+    btn.disabled=false;
+    return setStatus(error.message,"bad");
+  }
 
-      ctx.clearRect(0,0,innerWidth,innerHeight);
-
-      const g = ctx.createRadialGradient(innerWidth*0.25, innerHeight*0.2, 0, innerWidth*0.25, innerHeight*0.2, Math.max(innerWidth,innerHeight));
-      g.addColorStop(0, "rgba(41,255,106,0.08)");
-      g.addColorStop(0.55, "rgba(0,0,0,0)");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,innerWidth,innerHeight);
-
-      for (const s of stars){
-        s.a += (Math.random() - 0.5) * s.tw;
-        s.a = Math.max(0.08, Math.min(0.95, s.a));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(232,255,241,${s.a})`;
-        ctx.fill();
-      }
-
-      meteorTimer += dt;
-      if (meteorTimer > (Math.random()*1800 + 1200)) {
-        spawnMeteor();
-        meteorTimer = 0;
-      }
-
-      for (let i = meteors.length - 1; i >= 0; i--){
-        const m = meteors[i];
-        m.x += m.vx * (dt/16.67);
-        m.y += m.vy * (dt/16.67);
-        m.life += (dt/16.67);
-
-        const tx = m.x - (m.vx/Math.hypot(m.vx,m.vy)) * m.len;
-        const ty = m.y - (m.vy/Math.hypot(m.vx,m.vy)) * m.len;
-
-        const grad = ctx.createLinearGradient(m.x, m.y, tx, ty);
-        grad.addColorStop(0, "rgba(41,255,106,0.85)");
-        grad.addColorStop(0.35, "rgba(124,255,177,0.35)");
-        grad.addColorStop(1, "rgba(0,0,0,0)");
-
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(m.x, m.y);
-        ctx.lineTo(tx, ty);
-        ctx.stroke();
-
-        if (m.life > m.maxLife || m.x < -200 || m.y > innerHeight + 200){
-          meteors.splice(i,1);
-        }
-      }
-
-      requestAnimationFrame(draw);
-    }
-    resize();
-    requestAnimationFrame(draw);
-
-    // ---- Registro con Supabase ----
-    const statusEl = document.getElementById("status");
-    const submitBtn = document.getElementById("submitBtn");
-
-    function setStatus(msg, kind){
-      statusEl.textContent = msg;
-      statusEl.className = "status show " + (kind || "");
-    }
-
-    const emailEl = document.getElementById("email");
-    const userEl  = document.getElementById("user");
-    const passEl  = document.getElementById("pass");
-    const pass2El = document.getElementById("pass2");
-
-    function normalizeUser(v){
-      v = (v || "").trim();
-      if (v.startsWith("@")) v = v.slice(1);
-      v = v.toLowerCase().replace(/[^a-z0-9_]/g, "");
-      return "@" + v;
-    }
-
-    userEl.addEventListener("input", () => {
-      userEl.value = normalizeUser(userEl.value);
-    });
-
-    document.getElementById("registerForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const email = emailEl.value.trim().toLowerCase();
-      const user  = normalizeUser(userEl.value);
-      const p1 = passEl.value;
-      const p2 = pass2El.value;
-
-      if (!email) return setStatus("Pon tu correo.", "bad");
-      if (user.length < 4) return setStatus("Tu @user está muy corto.", "bad");
-      if (p1.length < 6) return setStatus("La contraseña debe tener mínimo 6 caracteres.", "bad");
-      if (p1 !== p2) return setStatus("Las contraseñas no coinciden.", "bad");
-
-      submitBtn.disabled = true;
-      setStatus("Creando cuenta...", "good");
-
-      try{
-        // 1) Crear usuario en Supabase Auth
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: p1,
-          options: {
-            data: { user_handle: user } // se guarda en metadata
-          }
-        });
-        if (error) throw error;
-
-        // 2) Si tu proyecto NO pide confirmación por email, habrá sesión y puedes entrar directo.
-        // Si SÍ pide confirmación, no habrá sesión y el usuario debe confirmar correo.
-        if (data.session) {
-          // ✅ (Opcional) Aquí luego insertaremos en "profiles" cuando la tengamos lista.
-          window.location.href = "dashboard.html";
-        } else {
-          setStatus("Cuenta creada ✅ Revisa tu correo para confirmar y luego inicia sesión.", "good");
-          setTimeout(() => window.location.href = "login.html", 1600);
-        }
-
-      } catch (err) {
-        setStatus(err.message || "Error al registrar.", "bad");
-        submitBtn.disabled = false;
-      }
-    });
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-  <script src="app.js"></script>
+  setStatus("Cuenta creada. Revisa tu correo.","good");
+  setTimeout(()=>location.href="login.html",1500);
+});
+</script>
 </body>
 </html>
-
